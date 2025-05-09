@@ -1,6 +1,6 @@
 # Sketch to Reality
 
-A web-based 2D→3D pipeline that converts hand-drawn architectural sketches and user-defined parameters into immersive VR panoramas.
+A web-based 2D to 3D pipeline that converts hand‑drawn architectural sketches and user‑defined parameters into immersive VR panoramas.
 
 ---
 
@@ -8,30 +8,45 @@ A web-based 2D→3D pipeline that converts hand-drawn architectural sketches and
 
 ```
 project-root/
-├─ package1_sketch_to_csv/
-│  └─ penstroke_app.html
-├─ package2_csv_to_panorama/
-│  ├─ blender_2D_to_panorama.py
-│  ├─ blender_debug.py
-│  └─ debug.blend
-└─ package3_vr_ui/
-   ├─ app.py
-   ├─ .env.example
-   ├─ templates/
-   │  └─ index.html
-   └─ static/
-      ├─ css/
-      │  └─ chat.css
-      └─ js/
-         └─ chat.js
-````
+│
+├─ Pen_stroke_app/          # Unified Sketch→CSV→Panorama package
+│  ├─ penstroke_app.html        # Sketch UI & CSV export (inputs)
+│  ├─ app_output_form/          # Exported CSVs (build.csv, camera.csv)
+│  ├─ blender_2D_to_panorama.py # Blender script for geometry & rendering
+│  ├─ blender_debug.py          # Debug script for Blender UI
+│  ├─ debug.blend               # Blender file for debugging
+│  ├─ panorama_input/           # Generated panoramas (outputs)
+│  └─ bak_image/                # Background map image
+│
+└─ UI/                     # Flask & WebXR viewer
+   ├─ app.py                    # Flask backend
+   ├─ .env.example              # Environment variables template
+   ├─ templates/                # HTML templates
+   │  └─ index.html             # VR viewer page
+   └─ static/                   # Front‑end assets
+      ├─ panorama_input/        # Input panoramas to here for display
+      ├─ css/                   # Stylesheets
+      │  └─ chat.css            # Chat UI styles
+      └─ js/                    # JavaScript
+         └─ chat.js             # Chat & WebXR logic
+```
+
+> **Note:** The first two steps to run have been merged into `Pen_stroke_app/` for a single Sketch-Canvas to Panorama workflow. The `UI/` folder hosts the live demo environment.
+
+> **Note:** Feel free to redirect the output of panorama from `Pen_stroke_app/panorama_input/` to `UI/panorama_input/` for streamlining the process. The current structure was designed for step by step monitoring.
+
+---
+## Demo Video
+
+A short demonstration of the Sketch to Reality workflow is available on YouTube:
+Follow this link to watch: https://youtu.be/pukzsR8duLI
 
 ---
 
 ## Prerequisites
 
 * **Python 3.9+**
-* **Blender 3.3+** (make sure `blender` is on your `$PATH`)
+* **Blender 3.3+** (ensure `blender` is on your PATH)
 * A modern web browser (Chrome, Firefox, Safari)
 
 ---
@@ -44,76 +59,71 @@ project-root/
    git clone https://github.com/YOUR_USERNAME/sketch-to-reality.git
    cd sketch-to-reality
    ```
-
-2. **Install Python deps**
+2. **Install Python dependencies**
 
    ```bash
    pip install flask python-dotenv openai
    ```
-
 3. **Install Blender**
 
    * Download from [https://www.blender.org/download/](https://www.blender.org/download/)
-   * Ensure you can run `blender --version` in your terminal.
+   * Verify installation with `blender --version`
 
 ---
 
-## Demo Workflow
+## Workflow Demo
 
-### 1. Sketch → CSV (package1\_sketch\_to\_csv)
+### 1. Pen\_stroke\_app (2D Sketch → CSV → 3D Model →Panorama)
 
-1. Open `penstroke_app.html` in your browser
-2. Draw footprints, camera markers & heights
-3. Export `build.csv` and `camera.csv`
-4. Move them into `package2_csv_to_panorama/app_output_form/`
+1. **Open** `Pen_stroke_app/penstroke_app.html` in your browser.
+2. **Sketch** footprints, enter building heights, and place position markers.
+3. **Export CSVs** into `Pen_stroke_app/app_output_form/`:
 
-### 2. CSV → Panorama (package2\_csv\_to\_panorama)
-
-1. Confirm CSVs in `app_output_form/`
-2. Run:
+   * `build.csv`
+   * `camera.csv`
+4. **Render Panoramas** by running Blender:
 
    ```bash
-   blender --background --python blender_2D_to_panorama.py
+   blender --background --python Pen_stroke_app/blender_2D_to_panorama.py
    ```
-3. *(Optional)* Debug in Blender: open `debug.blend` and run `blender_debug.py`
-4. Move generated `panorama_*.jpg` into `package3_vr_ui/static/panorama_input/`
 
-### 3. Panorama → VR UI (package3\_vr\_ui)
+   Generated files: `Pen_stroke_app/panorama_input/panorama_*.jpg`
 
-1. Copy panoramas to `static/panorama_input/`
-2. In `package3_vr_ui/`:
+   > **Note:** This is a script that runs the geometry extrusion to renderings. Panorama's render environment & resolution can be further adjusted in the python script.
+5. *(Optional)* **Debug** in Blender UI: open `Pen_stroke_app/debug.blend` and run `blender_debug.py` to inspect geometry and camera placements.
+
+### 2. UI (Panorama → Immersive View & Annotations)
+
+1. **Copy** panoramas from `Pen_stroke_app/panorama_input/` into `UI/static/panorama_input/`.
+2. **Configure** environment variables:
 
    ```bash
+   cd UI
    cp .env.example .env
-   # edit .env to add your OPENAI_API_KEY
+   # Edit .env to add your OPENAI_API_KEY
    ```
-3. Start server:
+3. **Launch** the Flask server:
 
    ```bash
    flask run
    ```
-4. Visit `http://localhost:5000` to explore & annotate
+4. **Visit** `http://localhost:5000` to explore VR panoramas, place annotation dots, record audio, and view live transcriptions.
 
 ---
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and fill in your keys.
+Copy `.env.example` to `.env` and add your keys:
 
----
-
-## .gitignore & .env.example
-
-* Use a Python `.gitignore` (ignores `__pycache__/`, `.env`, etc.).
-* `.env.example` lists required vars without secrets.
+```ini
+OPENAI_API_KEY=your_key_here
+```
+Here is the instruction to set up your own API on OPEN AI: https://openai.com/index/openai-api/
 
 ---
 
 ## License
 
-MIT License – see `LICENSE` for details.
+MIT License — see `LICENSE` for details.
 
-```
-
-After saving that as **README.md**, open the file in your editor’s Markdown preview (or push it and view it on GitHub.com) to confirm the headings and code block render as expected.
-```
+---

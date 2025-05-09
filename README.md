@@ -1,4 +1,3 @@
-````markdown
 # Sketch to Reality
 
 A web-based 2D→3D pipeline that converts hand-drawn architectural sketches and user-defined parameters into immersive VR panoramas.
@@ -7,7 +6,7 @@ A web-based 2D→3D pipeline that converts hand-drawn architectural sketches and
 
 ## Repository Structure
 
-```plaintext
+```
 project-root/
 ├─ package1_sketch_to_csv/
 │  └─ penstroke_app.html

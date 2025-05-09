@@ -1,103 +1,120 @@
-Sketch to Reality
+````markdown
+# Sketch to Reality
 
-A web-based 2D to 3D pipeline that converts hand‑drawn architectural sketches and user‑defined parameters into immersive VR panoramas.
+A web-based 2D→3D pipeline that converts hand-drawn architectural sketches and user-defined parameters into immersive VR panoramas.
 
-Repository Structure
+---
 
+## Repository Structure
+
+```plaintext
 project-root/
-├── package1_sketch_to_csv/        # HTML sketch app → CSV export
-│   └── penstroke_app.html
-├── package2_csv_to_panorama/      # Blender scripts → panorama rendering
-│   ├── blender_2D_to_panorama.py
-│   ├── blender_debug.py
-│   └── debug.blend
-├── package3_vr_ui/                # Flask app + WebXR viewer
-    ├── app.py
-    ├── .env.example
-    ├── templates/
-    │   └── index.html
-    └── static/
-        ├── css/chat.css
-        └── js/chat.js
+├─ package1_sketch_to_csv/
+│  └─ penstroke_app.html
+├─ package2_csv_to_panorama/
+│  ├─ blender_2D_to_panorama.py
+│  ├─ blender_debug.py
+│  └─ debug.blend
+└─ package3_vr_ui/
+   ├─ app.py
+   ├─ .env.example
+   ├─ templates/
+   │  └─ index.html
+   └─ static/
+      ├─ css/
+      │  └─ chat.css
+      └─ js/
+         └─ chat.js
+````
 
-Note: Folders are separated for debugging; you can merge them into a single streamlined structure in production.
+---
 
-Prerequisites
+## Prerequisites
 
-Python 3.9+
+* **Python 3.9+**
+* **Blender 3.3+** (make sure `blender` is on your `$PATH`)
+* A modern web browser (Chrome, Firefox, Safari)
 
-Blender 3.3+ (add blender to your PATH)
+---
 
-A modern web browser (Chrome, Firefox, Safari)
+## Installation
 
-Installation
+1. **Clone the repo**
 
-Clone the repository
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/sketch-to-reality.git
+   cd sketch-to-reality
+   ```
 
-git clone https://github.com/YOUR_USERNAME/sketch-to-reality.git
-cd sketch-to-reality
+2. **Install Python deps**
 
-Install Python dependencies
+   ```bash
+   pip install flask python-dotenv openai
+   ```
 
-pip install flask python-dotenv openai
+3. **Install Blender**
 
-Install Blender
+   * Download from [https://www.blender.org/download/](https://www.blender.org/download/)
+   * Ensure you can run `blender --version` in your terminal.
 
-Download from https://www.blender.org/download/
+---
 
-Ensure the blender command is available in your terminal.
+## Demo Workflow
 
-Demo Workflow
+### 1. Sketch → CSV (package1\_sketch\_to\_csv)
 
-1. Sketch → CSV (package1_sketch_to_csv)
+1. Open `penstroke_app.html` in your browser
+2. Draw footprints, camera markers & heights
+3. Export `build.csv` and `camera.csv`
+4. Move them into `package2_csv_to_panorama/app_output_form/`
 
-Open penstroke_app.html in your browser.
+### 2. CSV → Panorama (package2\_csv\_to\_panorama)
 
-Draw footprints, place camera markers, and label heights.
+1. Confirm CSVs in `app_output_form/`
+2. Run:
 
-Click the download button to export build.csv and camera.csv.
+   ```bash
+   blender --background --python blender_2D_to_panorama.py
+   ```
+3. *(Optional)* Debug in Blender: open `debug.blend` and run `blender_debug.py`
+4. Move generated `panorama_*.jpg` into `package3_vr_ui/static/panorama_input/`
 
-Move these CSVs into package2_csv_to_panorama/app_output_form/.
+### 3. Panorama → VR UI (package3\_vr\_ui)
 
-2. CSV → Panorama (package2_csv_to_panorama)
+1. Copy panoramas to `static/panorama_input/`
+2. In `package3_vr_ui/`:
 
-Verify build.csv and camera.csv are in app_output_form/.
+   ```bash
+   cp .env.example .env
+   # edit .env to add your OPENAI_API_KEY
+   ```
+3. Start server:
 
-Run Blender in background:
+   ```bash
+   flask run
+   ```
+4. Visit `http://localhost:5000` to explore & annotate
 
-blender --background --python blender_2D_to_panorama.py
+---
 
-This generates panorama_*.jpg in package2_csv_to_panorama/panorama_input/.
+## Environment Variables
 
-(Optional) Debug in Blender UI:
+Copy `.env.example` to `.env` and fill in your keys.
 
-Open debug.blend and run blender_debug.py in the Text Editor.
+---
 
-Move rendered panoramas into package3_vr_ui/static/panorama_input/.
+## .gitignore & .env.example
 
-3. Panorama → VR UI (package3_vr_ui)
+* Use a Python `.gitignore` (ignores `__pycache__/`, `.env`, etc.).
+* `.env.example` lists required vars without secrets.
 
-Copy panorama_*.jpg files into static/panorama_input/.
+---
 
-Create .env from .env.example:
+## License
 
-cd package3_vr_ui
-cp .env.example .env
-# Edit .env to add your OPENAI_API_KEY
+MIT License – see `LICENSE` for details.
 
-Launch the Flask server:
+```
 
-flask run
-
-Visit http://localhost:5000 to explore panoramas, annotate, and transcribe audio.
-
-Environment Variables
-
-Copy .env.example to .env and fill in your API keys.
-
-.gitignore & .env.example
-
-A Python .gitignore excludes __pycache__, .env, and other artifacts.
-
-.env.example lists required variables without secrets.
-
+After saving that as **README.md**, open the file in your editor’s Markdown preview (or push it and view it on GitHub.com) to confirm the headings and code block render as expected.
+```

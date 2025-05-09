@@ -1,6 +1,7 @@
 # Sketch to Reality
+## Transforming Hand-Drawn Design into Multi-modal Immersive Digital Twin
 
-A web-based 2D to 3D pipeline that converts hand‑drawn architectural sketches and user‑defined parameters into immersive VR panoramas.
+A 2D to 3D pipeline that converts hand‑drawn architectural sketches and user‑defined parameters into immersive panoramas.
 
 ---
 

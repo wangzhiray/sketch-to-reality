@@ -1,0 +1,71 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>360° Annotator</title>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+  <link rel="stylesheet" href="/static/chat.css">
+  <style>
+    body { margin:0; height:100vh; overflow:hidden; }
+    #controls {
+      position:fixed; top:20px; left:20px;
+      z-index:10; background:rgba(255,255,255,0.8);
+      padding:8px; border-radius:6px;
+      display:flex; gap:6px;
+    }
+    #controls button { font-size:14px; cursor:pointer; }
+    .overlay {
+      position:absolute; display:none;
+      background:rgba(0,0,0,0.7); color:#fff;
+      padding:6px 8px; border-radius:4px;
+      pointer-events:none; z-index:15; white-space:nowrap;
+    }
+    #toast { font-size:14px; }
+    #hover { font-size:12px; }
+  </style>
+</head>
+<body>
+
+  <!-- Controls Pane -->
+  <div id="controls">
+    <button id="prev">◀</button>
+    <button id="addBtn">Add Notes</button>
+    <button id="recBtn" disabled>🎙️ Record</button>
+    <button id="stopBtn" disabled>🛑 Stop</button>
+    <button id="next">▶</button>
+  </div>
+
+  <!-- Overlays -->
+  <div id="toast" class="overlay"></div>
+  <div id="hover" class="overlay"></div>
+
+  <!-- 360° Scene -->
+  <a-scene embedded vr-mode-ui="enabled:true">
+    <a-sky id="sky"
+      geometry="primitive: sphere; radius: 50; segmentsWidth:64; segmentsHeight:64"
+      rotation="0 -90 0"
+      src="/static/panorama_input/panorama_1.jpg">
+    </a-sky>
+    <a-camera id="camera" cursor="rayOrigin: mouse" look-controls></a-camera>
+  </a-scene>
+
+  <!-- Main Logic -->
+  <script src="/static/chat.js"></script>
+  <script>
+    const camEl = document.querySelector('#camera');
+    window.addEventListener('wheel', e => {
+      e.preventDefault();
+      const cam = camEl.getObject3D('camera');
+      if (!cam) return;
+      cam.fov = THREE.MathUtils.clamp(
+        cam.fov + e.deltaY * 0.05,
+        30,
+        100
+      );
+      cam.updateProjectionMatrix();
+    }, { passive: false });
+  </script>
+</body>
+</html>

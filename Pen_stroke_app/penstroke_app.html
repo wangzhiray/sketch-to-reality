@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Penstroke App (Bottom-Left Origin, No Search Box)</title>
+  <style>
+    html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#ccc; }
+    #container { position:relative; width:100vw; height:calc(100vw * 9 / 16); max-height:100vh; margin:auto; touch-action:none; }
+    #bgImage { position:absolute; width:100%; height:100%; object-fit:cover; z-index:0; }
+    canvas { position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; }
+    #toolbar { position:absolute; bottom:20px; left:20px; display:flex; gap:12px; z-index:2; }
+    .tool-btn { width:40px; height:40px; border-radius:50%; background:#3066ff; color:white; border:none;
+      display:flex; align-items:center; justify-content:center; font-size:20px; cursor:pointer; }
+    #status { position:absolute; top:20px; left:20px; background:rgba(255,255,255,0.8); padding:6px 12px; border-radius:4px; z-index:2; font-size:14px; }
+  </style>
+</head>
+<body>
+<div id="container">
+  <img id="bgImage" src="bak_image/background.jpg" alt="Background" />
+  <canvas id="drawingLayer"></canvas>
+  <canvas id="interactionLayer"></canvas>
+  <canvas id="pointLayer"></canvas>
+
+  <div id="toolbar">
+    <button class="tool-btn" id="redoBtn">↪️</button>
+    <button class="tool-btn" id="undoBtn">↩️</button>
+    <button class="tool-btn" id="modeDrawBtn">✏️</button>
+    <button class="tool-btn" id="modeLabelBtn">🏷️</button>
+    <button class="tool-btn" id="modePointBtn">📍</button>
+    <button class="tool-btn" id="modeLineBtn">📐</button>
+    <button class="tool-btn" id="exportAllBtn">⬇️</button>
+  </div>
+
+  <div id="status"></div>
+</div>
+
+<script>
+const container = document.getElementById('container');
+const drawingLayer = document.getElementById('drawingLayer');
+const interactionLayer = document.getElementById('interactionLayer');
+const pointLayer = document.getElementById('pointLayer');
+const statusBar = document.getElementById('status');
+const ctxDraw = drawingLayer.getContext('2d');
+const ctxInteract = interactionLayer.getContext('2d');
+const ctxPoint = pointLayer.getContext('2d');
+
+const scale = 0.1; // meters per pixel
+
+let shapes = [], labels = {}, points = [];
+let currentPath = [], linePath = [];
+let shapeIdCounter = 1, currentMode = 'draw';
+const undoStack = [], redoStack = [];
+
+function updateStatus() {
+  const mapW = (drawingLayer.width * scale).toFixed(2);
+  const mapH = (drawingLayer.height * scale).toFixed(2);
+  statusBar.textContent = `Scale: ${scale} m/px | Map: ${mapW}m x ${mapH}m`;
+}
+
+function resizeCanvases() {
+  [drawingLayer, interactionLayer, pointLayer].forEach(c => {
+    c.width = container.clientWidth;
+    c.height = container.clientHeight;
+  });
+  redrawAll();
+  updateStatus();
+}
+window.addEventListener('resize', resizeCanvases);
+resizeCanvases();
+
+function setMode(mode) {
+  currentMode = mode;
+  drawingLayer.style.pointerEvents = (mode === 'draw') ? 'auto' : 'none';
+  interactionLayer.style.pointerEvents = ['label','line'].includes(mode) ? 'auto' : 'none';
+  pointLayer.style.pointerEvents = (mode === 'point') ? 'auto' : 'none';
+}
+['modeDrawBtn','modeLabelBtn','modePointBtn','modeLineBtn'].forEach(id => {
+  document.getElementById(id).addEventListener('click', () => setMode(id.replace('mode','').replace('Btn','').toLowerCase()));
+});
+setMode('draw');
+
+function redrawAll() {
+  ctxDraw.clearRect(0,0,drawingLayer.width,drawingLayer.height);
+  ctxInteract.clearRect(0,0,interactionLayer.width,interactionLayer.height);
+  ctxPoint.clearRect(0,0,pointLayer.width,pointLayer.height);
+
+  shapes.forEach(shape => {
+    ctxDraw.beginPath();
+    shape.path.forEach((pt,i) => i ? ctxDraw.lineTo(pt[0],pt[1]) : ctxDraw.moveTo(pt[0],pt[1]));
+    ctxDraw.closePath(); ctxDraw.strokeStyle='black'; ctxDraw.stroke();
+    if (labels[shape.id] != null) {
+      const [cx,cy] = shape.path.reduce((a,p) => [a[0]+p[0], a[1]+p[1]],[0,0]).map(s => s/shape.path.length);
+      ctxInteract.fillStyle='rgba(0,98,255,0.6)'; ctxInteract.beginPath(); ctxInteract.roundRect(cx-16,cy-12,32,20,6); ctxInteract.fill();
+      ctxInteract.fillStyle='white'; ctxInteract.font='bold 14px sans-serif'; ctxInteract.textAlign='center'; ctxInteract.textBaseline='middle';
+      ctxInteract.fillText(labels[shape.id]+'F',cx,cy-2);
+    }
+  });
+
+  if (currentMode==='line' && linePath.length) {
+    ctxInteract.strokeStyle='red'; ctxInteract.lineWidth=2;
+    ctxInteract.beginPath(); linePath.forEach((pt,i) => i ? ctxInteract.lineTo(pt[0],pt[1]) : ctxInteract.moveTo(pt[0],pt[1]));
+    ctxInteract.stroke();
+  }
+
+  points.forEach(pt => {
+    ctxPoint.beginPath(); ctxPoint.moveTo(pt.x-5,pt.y); ctxPoint.lineTo(pt.x+5,pt.y);
+    ctxPoint.moveTo(pt.x,pt.y-5); ctxPoint.lineTo(pt.x,pt.y+5);
+    ctxPoint.strokeStyle='#3066ff'; ctxPoint.lineWidth=2; ctxPoint.stroke();
+  });
+}
+
+function pointInPolygon(x,y,poly) {
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++) {
+    const xi=poly[i][0], yi=poly[i][1], xj=poly[j][0], yj=poly[j][1];
+    const intersect = ((yi>y)!=(yj>y)) && (x<(xj-xi)*(y-yi)/(yj-yi)+xi);
+    if(intersect) inside = !inside;
+  }
+  return inside;
+}
+
+interactionLayer.addEventListener('click', e => {
+  const x=e.offsetX, y=e.offsetY;
+  if(currentMode==='line') {
+    if(!linePath.length) { linePath.push([x,y]); }
+    else {
+      const [fx,fy] = linePath[0];
+      if(Math.hypot(x-fx,y-fy)<10) {
+        linePath.push([fx,fy]);
+        const shape={id:shapeIdCounter++,path:linePath.slice()}; shapes.push(shape);
+        undoStack.push({type:'addShape',shape}); redoStack.length=0;
+        linePath=[];
+      } else linePath.push([x,y]);
+    }
+    redrawAll(); return;
+  }
+  if(currentMode==='label') {
+    for(let s of shapes) if(pointInPolygon(x,y,s.path)) {
+      const num = window.prompt('Enter floor count:');
+      if(num!=null) {
+        labels[s.id] = parseFloat(num);
+        undoStack.push({type:'addLabel',shapeId:s.id,label:num}); redoStack.length=0;
+      }
+      redrawAll(); break;
+    }
+  }
+});
+
+pointLayer.addEventListener('click', e => {
+  const x=e.offsetX, y=e.offsetY;
+  if(currentMode==='point') {
+    points.push({x,y});
+    undoStack.push({type:'addPoint',point:{x,y}}); redoStack.length=0;
+    redrawAll();
+  }
+});
+
+let isDrawing=false;
+drawingLayer.addEventListener('pointerdown', e => {
+  if(currentMode!=='draw') return;
+  isDrawing=true; drawingLayer.setPointerCapture(e.pointerId); currentPath=[[e.offsetX,e.offsetY]];
+});
+drawingLayer.addEventListener('pointermove', e => {
+  if(!isDrawing||currentMode!=='draw') return;
+  currentPath.push([e.offsetX,e.offsetY]); redrawAll();
+  ctxDraw.beginPath();
+  currentPath.forEach((pt,i)=>(i?ctxDraw.lineTo(pt[0],pt[1]):ctxDraw.moveTo(pt[0],pt[1])));
+  ctxDraw.strokeStyle='blue'; ctxDraw.stroke();
+});
+drawingLayer.addEventListener('pointerup', e => {
+  if(!isDrawing||currentMode!=='draw') return;
+  isDrawing=false; drawingLayer.releasePointerCapture(e.pointerId);
+  const [sx,sy]=currentPath[0], [ex,ey]=currentPath[currentPath.length-1];
+  if(Math.hypot(ex-sx,ey-sy)<20 && currentPath.length>10) {
+    const shape={id:shapeIdCounter++,path:[...currentPath]};
+    shapes.push(shape);
+    undoStack.push({type:'addShape',shape}); redoStack.length=0;
+  }
+  currentPath=[]; redrawAll();
+});
+
+['undoBtn','redoBtn'].forEach(id => {
+  document.getElementById(id).addEventListener('click', () => {
+    const isUndo = id==='undoBtn';
+    const stack = isUndo ? undoStack : redoStack;
+    const action = stack.pop(); if(!action) return;
+    (isUndo ? redoStack : undoStack).push(action);
+    switch(action.type) {
+      case 'addShape': isUndo ? shapes.pop() : shapes.push(action.shape); break;
+      case 'addLabel': isUndo ? delete labels[action.shapeId] : labels[action.shapeId] = action.label; break;
+      case 'addPoint': isUndo ? points.pop() : points.push(action.point); break;
+    }
+    redrawAll();
+  });
+});
+
+function downloadCSV(csv,filename) {
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function exportBuildCSV(){
+  const rows=[['ID','X(m)','Y(m)','h']];
+  shapes.forEach(s => {
+    const lbl=labels[s.id]!=null?labels[s.id]:0;
+    const h=(lbl*3).toFixed(2);
+    s.path.forEach(pt => {
+      const xw=(pt[0]*scale).toFixed(2);
+      const yw=((drawingLayer.height - pt[1]) * scale).toFixed(2);
+      rows.push([s.id,xw,yw,h]);
+    });
+  });
+  downloadCSV(rows.map(r=>r.join(',')).join('\n'),'build.csv');
+}
+
+function exportCameraCSV(){
+  const rows=[['camera','x','y']];
+  points.forEach((pt,i) => {
+    const xw=(pt.x*scale).toFixed(2);
+    const yw=((drawingLayer.height - pt.y) * scale).toFixed(2);
+    rows.push([i+1,xw,yw]);
+  });
+  downloadCSV(rows.map(r=>r.join(',')).join('\n'),'camera.csv');
+}
+
+document.getElementById('exportAllBtn').addEventListener('click', () => {
+  exportBuildCSV();
+  exportCameraCSV();
+});
+</script>
+</body>
+</html>
